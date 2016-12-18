@@ -1,6 +1,5 @@
 #include <Kore/pch.h>
 
-#include <Kore/Application.h>
 #include <Kore/IO/FileReader.h>
 #include <Kore/Math/Core.h>
 #include <Kore/System.h>
@@ -13,12 +12,10 @@
 #include <Kore/Threads/Thread.h>
 #include <Kore/Threads/Mutex.h>
 #include <Kore/Network/Socket.h>
+#include <Kore/Log.h>
 #include "ObjLoader.h"
 
-#include <iostream>
 #include <sstream>
-#include <cstdio>
-#include <string>
 
 // uncomment to be in control of the game
 //#define MASTER
@@ -164,14 +161,14 @@ namespace {
 	
 	const int port = SRC_PORT;
 	const int destPort = DEST_PORT;
-	const int destIp[] = {DEST_IP1, DEST_IP2, DEST_IP3, DEST_IP4};
+	const char* destination = "localhost";
 	
 	
 	// Send a packet to the other client
 	// If you are sending strings, make sure to null-terminate them, e.g. "hello\0"
 	// length is the length of the packet in bytes
 	void sendPacket(const unsigned char data[], int length) {
-		socket.send(destIp[0], destIp[1], destIp[2], destIp[3], destPort, data, length);
+		socket.send(destination, destPort, data, length);
 	}
 	
 	// Movement data for clients
@@ -396,9 +393,9 @@ namespace {
 		sendPacket(data, sizeof(unsigned char)* 6);
 		
 		#ifdef MASTER
-			std::cout << "Waiting for another player (the SLAVE) to join my game..." << std::endl;
+			log(Info, "Waiting for another player (the SLAVE) to join my game...");
 		#else
-			std::cout << "Waiting for another player (the MASTER) in control of the game..." << std::endl;
+			log(Info, "Waiting for another player (the MASTER) in control of the game...");
 		#endif // MASTER
 		
 		// wait for other player
@@ -417,9 +414,9 @@ namespace {
 		}
 		
 		#ifdef MASTER
-			std::cout << "Another player (the SLAVE) has joined my game!" << std::endl;
+			log(Info, "Another player (the SLAVE) has joined my game!");
 		#else
-			std::cout << "I have joined another players (the MASTER) game!" << std::endl;
+			log(Info, "I have joined another players (the MASTER) game!");
 		#endif // MASTER
 		
 		// resend hello for newly connected player
@@ -450,7 +447,7 @@ namespace {
 		
 		objects[2] = balls[2] = new Ball(((float)rand() / RAND_MAX)*2-1, 4.0f, 0.0f, structure, 3.0f);
 		objects[3] = new MeshObject("base.obj", "floor.png", structure);
-		objects[3]->M = mat4::RotationX(3.1415f / 2.0f)*mat4::Scale(0.15, 1, 1);
+		objects[3]->M = mat4::RotationX(3.1415f / 2.0f)*mat4::Scale(0.15f, 1, 1);
 		objects[4] = new MeshObject("base.obj", "StarMap.png", structure);
 		objects[4]->M = mat4::RotationX(3.1415f / 2.0f)*mat4::Scale(1, 1, 1)*mat4::Translation(0, 0, 0.5f);
 		
@@ -464,20 +461,19 @@ namespace {
 
 int kore(int argc, char** argv) {
 	#ifdef MASTER
-		std::cout << "I am the MASTER, I am in control of the game." << std::endl;
+		log(Info, "I am the MASTER, I am in control of the game.");
 	#else
-		std::cout << "I am the SLAVE, I want to join another game." << std::endl;
+		log(Info, "I am the SLAVE, I want to join another game.");
 	#endif // MASTER
 
-	std::cout << "I am listening on port " << port << std::endl;
-	std::cout << "and want to connect to " << destIp[0] << "." << destIp[1] << "." << destIp[2] << "." << destIp[3] << ":" << destPort << std::endl;
-	std::cout << std::endl;
+	log(Info, "I am listening on port %i", port);
+	log(Info, "and want to connect to %s:%i\n", destination, destPort);
 	
-	Application* app = new Application(argc, argv, width, height,0 ,false, "Exercise 11 - "  CLIENT_NAME);
-	
+	Kore::System::init("Exercise 12 - "  CLIENT_NAME, width, height);
+
 	init();
 	
-	app->setCallback(update);
+	Kore::System::setCallback(update);
 	
 	startTime = System::time();
 	Kore::Mixer::init();
@@ -486,8 +482,7 @@ int kore(int argc, char** argv) {
 	Keyboard::the()->KeyDown = keyDown;
 	Keyboard::the()->KeyUp = keyUp;
 	
-	app->start();
+	Kore::System::start();
 	
-	delete app;
 	return 0;
 }
