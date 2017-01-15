@@ -385,7 +385,7 @@ namespace {
 	
 	void init() {
 		srand(42);
-		
+		socket.init();
 		socket.open(port);
 		
 		// send "hello" when joining to tell other player you are there
