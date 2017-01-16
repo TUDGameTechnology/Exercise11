@@ -228,7 +228,7 @@ namespace {
 		Kore::Audio::update();
 		
 		Graphics::begin();
-		Graphics::clear(Graphics::ClearColorFlag | Graphics::ClearDepthFlag, 0xff9999FF, 1000.0f);
+		Graphics::clear(Graphics::ClearColorFlag | Graphics::ClearDepthFlag, 0xff9999FF, 1.0f);
 		
 		program->set();
 		
