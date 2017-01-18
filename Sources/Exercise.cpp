@@ -453,6 +453,7 @@ namespace {
 		
 		Graphics::setRenderState(DepthTest, true);
 		Graphics::setRenderState(DepthTestCompare, ZCompareLess);
+		Graphics::setRenderState(DepthWrite, true);
 		
 		Graphics::setTextureAddressing(tex, U, Repeat);
 		Graphics::setTextureAddressing(tex, V, Repeat);
