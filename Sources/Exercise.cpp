@@ -79,8 +79,8 @@ public:
 namespace {
 	void updateBall();
 	
-	const int width = 1024;
-	const int height = 768;
+	const int width = 512;
+	const int height = 512;
 	
 	double startTime;
 	Graphics4::Shader* vertexShader;
