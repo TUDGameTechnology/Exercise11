@@ -16,6 +16,9 @@ public:
 		mesh = loadObj(meshFile);
 		image = new Graphics4::Texture(textureFile, true);
 		
+		minx = miny = minz = 9999999;
+		maxx = maxy = maxz = -9999999;
+		
 		vertexBuffer = new Graphics4::VertexBuffer(mesh->numVertices, structure, 0);
 		float* vertices = vertexBuffer->lock();
 		for (int i = 0; i < mesh->numVertices; ++i) {
@@ -59,10 +62,9 @@ public:
 	
 	mat4 M;
 	
+private:
 	Graphics4::VertexBuffer* vertexBuffer;
 	Graphics4::IndexBuffer* indexBuffer;
-	
-private:
 	Mesh* mesh;
 	Graphics4::Texture* image;
 	
