@@ -1,11 +1,12 @@
-#ifdef GL_ES
-precision mediump float;
-#endif
+#version 450
 
 uniform sampler2D tex;
-varying vec2 texCoord;
-varying vec3 normal;
 
-void kore() {
-	gl_FragColor = texture2D(tex, texCoord) + normal.x * 0.01; // replace with your BRDF
+in vec2 texCoord;
+in vec3 normal;
+
+out vec4 FragColor;
+
+void main() {
+	FragColor = texture(tex, texCoord) + normal.x * 0.01; // replace with your BRDF
 }
