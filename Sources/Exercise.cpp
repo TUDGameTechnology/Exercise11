@@ -4,7 +4,6 @@
 #include <Kore/Math/Core.h>
 #include <Kore/System.h>
 #include <Kore/Input/Keyboard.h>
-#include <Kore/Audio1/Audio.h>
 #include <Kore/Graphics4/Graphics.h>
 #include <Kore/Graphics4/PipelineState.h>
 #include <Kore/Math/Quaternion.h>
@@ -19,7 +18,7 @@
 #include "MeshObject.h"
 
 // uncomment to be in control of the game
-#define MASTER
+//#define MASTER
 
 #ifdef MASTER
 	#define SRC_PORT 9898
@@ -168,8 +167,6 @@ namespace {
 		lastTime = t;
 		
 		updateBall();
-		
-		Kore::Audio2::update();
 		
 		Graphics4::begin();
 		Graphics4::clear(Graphics4::ClearColorFlag | Graphics4::ClearDepthFlag, 0xff9999FF, 1.0f);
@@ -415,9 +412,6 @@ int kore(int argc, char** argv) {
 	log(Info, "and want to connect to %s:%i\n", destination, destPort);
 	
 	Kore::System::init("Exercise 11 - "  CLIENT_NAME, width, height);
-
-	Kore::Audio1::init();
-	Kore::Audio2::init();
 	
 	init();
 	
