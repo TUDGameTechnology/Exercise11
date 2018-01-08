@@ -21,13 +21,13 @@
 //#define MASTER
 
 #ifdef MASTER
-	#define SRC_PORT 9898
-	#define DEST_PORT 9897
-	#define CLIENT_NAME "Master"
+#define SRC_PORT 9898
+#define DEST_PORT 9897
+#define CLIENT_NAME "Master"
 #else
-	#define SRC_PORT 9897
-	#define DEST_PORT 9898
-	#define CLIENT_NAME "Slave"
+#define SRC_PORT 9897
+#define DEST_PORT 9898
+#define CLIENT_NAME "Slave"
 #endif
 
 #define DEST_IP1 127
@@ -42,14 +42,14 @@ public:
 	Ball(float x, float y, float z, const Graphics4::VertexStructure& structure, float scale = 1.0f) : MeshObject("ball.obj", "unshaded.png", structure, scale), x(x), y(y), z(z), dir(0, 0, 0) {
 		rotation = Quaternion(vec3(0, 0, 1), 0);
 	}
-
+	
 	void update(float tdif) override {
 		vec3 dir = this->dir;
 		if (dir.getLength() != 0) dir.setLength(dir.getLength() * tdif * 60.0f);
-		x += dir.x();
-		if (x > 1) {
-			x = 1;
-		}
+			x += dir.x();
+			if (x > 1) {
+				x = 1;
+			}
 		if (x < -1) {
 			x = -1;
 		}
@@ -64,7 +64,7 @@ public:
 		if (dir.getLength() != 0) {
 			float Horizontal = dir.dot(vec3(1, 0, 0));
 			float Vertical = dir.dot(vec3(0, 1, 0));
-
+			
 			rotation = rotation.rotated(Quaternion(vec3(-1, 0, 0), Vertical * 3.0f));
 			rotation = rotation.rotated(Quaternion(vec3(0, 1, 0), Horizontal * 3.0f));
 		}
@@ -78,10 +78,10 @@ public:
 
 namespace {
 	void updateBall();
-
+	
 	const int width = 1024;
 	const int height = 768;
-
+	
 	double startTime;
 	Graphics4::Shader* vertexShader;
 	Graphics4::Shader* fragmentShader;
@@ -99,7 +99,7 @@ namespace {
 	mat4 PV;
 	
 	float lastTime = 0.0;
-
+	
 	Socket socket;
 	vec3 position(0, 2, -3);
 	
@@ -136,14 +136,14 @@ namespace {
 			}
 			
 			/************************************************************************/
-			/* Practical Task: Read the packets with the movement data you sent  and 
-			/* apply them by setting the boolean values for movement control. 
+			/* Practical Task: Read the packets with the movement data you sent  and
+			/* apply them by setting the boolean values for movement control.
 			/************************************************************************/
-			#ifdef MASTER
-				// Set the values for left2, right2, up2, down2 here
-			#else
+#ifdef MASTER
+			// Set the values for left2, right2, up2, down2 here
+#else
 			// Set the values for left, right, up, down here
-
+			
 			// receive position updates of the npc ball
 			if ((ss.str() == "x")) {
 				read = socket.receive(buffer, sizeof(buffer), fromAddress, fromPort);
@@ -157,7 +157,7 @@ namespace {
 				read = socket.receive(buffer, sizeof(buffer), fromAddress, fromPort);
 				balls[2]->z = floatBuffer[0];
 			}
-			#endif // MASTER
+#endif // MASTER
 			
 			updateBall();
 		}
@@ -184,30 +184,30 @@ namespace {
 			++current;
 		}
 		
-		#ifdef MASTER
-			// send position of the npc ball
-			unsigned char floatData[255];
-			float *f_buf = (float*)floatData;
-			
-			const unsigned char data1[] = "x\0";
-			const unsigned char data2[] = "y\0";
-			const unsigned char data3[] = "z\0";
-			
-			sendPacket(data1, sizeof(unsigned char) * 2);
-			f_buf[0] = balls[2]->x;
-			sendPacket(floatData, sizeof(float));
-			sendPacket(data2, sizeof(unsigned char)* 2);
-			f_buf[0] = balls[2]->y;
-			sendPacket(floatData, sizeof(float));
-			sendPacket(data3, sizeof(unsigned char)* 2);
-			f_buf[0] = balls[2]->z;
-			sendPacket(floatData, sizeof(float));
-		#endif
+#ifdef MASTER
+		// send position of the npc ball
+		unsigned char floatData[255];
+		float *f_buf = (float*)floatData;
+		
+		const unsigned char data1[] = "x\0";
+		const unsigned char data2[] = "y\0";
+		const unsigned char data3[] = "z\0";
+		
+		sendPacket(data1, sizeof(unsigned char) * 2);
+		f_buf[0] = balls[2]->x;
+		sendPacket(floatData, sizeof(float));
+		sendPacket(data2, sizeof(unsigned char)* 2);
+		f_buf[0] = balls[2]->y;
+		sendPacket(floatData, sizeof(float));
+		sendPacket(data3, sizeof(unsigned char)* 2);
+		f_buf[0] = balls[2]->z;
+		sendPacket(floatData, sizeof(float));
+#endif
 		
 		Graphics4::end();
 		Graphics4::swapBuffers();
 	}
-
+	
 	void updateBall() {
 		// user controlled balls
 		float speed = 0.05f;
@@ -249,19 +249,19 @@ namespace {
 		}
 		// NPC ball
 		balls[2]->dir.y() = -0.02f;
-		#ifdef MASTER
-			if (balls[2]->y == 4) {
-				balls[2]->x = ((float)rand() / RAND_MAX)*2-1;
-			}
-		#endif
+#ifdef MASTER
+		if (balls[2]->y == 4) {
+			balls[2]->x = ((float)rand() / RAND_MAX)*2-1;
+		}
+#endif
 	}
-
+	
 	/************************************************************************/
 	/* Practical Task: Send packets with information about the input controls
 	/* of the local player - keyDown
 	/************************************************************************/
 	void keyDown(KeyCode code) {
-		#ifdef MASTER
+#ifdef MASTER
 		if (code == KeyLeft) {
 			left = true;
 		}
@@ -274,7 +274,7 @@ namespace {
 		else if (code == KeyDown) {
 			down = true;
 		}
-		#else
+#else
 		if (code == KeyA) {
 			left2 = true;
 		}
@@ -287,7 +287,7 @@ namespace {
 		else if (code == KeyS) {
 			down2 = true;
 		}
-		#endif // MASTER
+#endif // MASTER
 	}
 	
 	/************************************************************************/
@@ -295,7 +295,7 @@ namespace {
 	/* of the local player - keyUp
 	/************************************************************************/
 	void keyUp(KeyCode code) {
-		#ifdef MASTER
+#ifdef MASTER
 		if (code == KeyLeft) {
 			left = false;
 		}
@@ -308,7 +308,7 @@ namespace {
 		else if (code == KeyDown) {
 			down = false;
 		}
-		#else
+#else
 		if (code == KeyA) {
 			left2 = false;
 		}
@@ -321,7 +321,7 @@ namespace {
 		else if (code == KeyS) {
 			down2 = false;
 		}
-		#endif // MASTER
+#endif // MASTER
 	}
 	
 	void init() {
@@ -333,11 +333,11 @@ namespace {
 		const unsigned char data[] = "hello\0";
 		sendPacket(data, sizeof(unsigned char)* 6);
 		
-		#ifdef MASTER
-			log(Info, "Waiting for another player (the SLAVE) to join my game...");
-		#else
-			log(Info, "Waiting for another player (the MASTER) in control of the game...");
-		#endif // MASTER
+#ifdef MASTER
+		log(Info, "Waiting for another player (the SLAVE) to join my game...");
+#else
+		log(Info, "Waiting for another player (the MASTER) in control of the game...");
+#endif // MASTER
 		
 		// wait for other player
 		while (true) {
@@ -354,11 +354,11 @@ namespace {
 			}
 		}
 		
-		#ifdef MASTER
-			log(Info, "Another player (the SLAVE) has joined my game!");
-		#else
-			log(Info, "I have joined another players (the MASTER) game!");
-		#endif // MASTER
+#ifdef MASTER
+		log(Info, "Another player (the SLAVE) has joined my game!");
+#else
+		log(Info, "I have joined another players (the MASTER) game!");
+#endif // MASTER
 		
 		// resend hello for newly connected player
 		sendPacket(data, sizeof(unsigned char)* 6);
@@ -392,9 +392,9 @@ namespace {
 		
 		objects[2] = balls[2] = new Ball(((float)rand() / RAND_MAX)*2-1, 4.0f, 0.0f, structure, 3.0f);
 		objects[3] = new MeshObject("base.obj", "floor.png", structure);
-		objects[3]->M = mat4::RotationX(3.1415f / 2.0f)*mat4::Scale(0.15f, 1, 1);
+		objects[3]->M = mat4::RotationX(Kore::pi / 2.0f)*mat4::Scale(0.15f, 1, 1);
 		objects[4] = new MeshObject("base.obj", "StarMap.png", structure);
-		objects[4]->M = mat4::RotationX(3.1415f / 2.0f)*mat4::Scale(1, 1, 1)*mat4::Translation(0, 0, 0.5f);
+		objects[4]->M = mat4::RotationX(Kore::pi / 2.0f)*mat4::Scale(1, 1, 1)*mat4::Translation(0, 0, 0.5f);
 		
 		Graphics4::setTextureAddressing(tex, Graphics4::U, Graphics4::Repeat);
 		Graphics4::setTextureAddressing(tex, Graphics4::V, Graphics4::Repeat);
@@ -402,12 +402,12 @@ namespace {
 }
 
 int kore(int argc, char** argv) {
-	#ifdef MASTER
-		log(Info, "I am the MASTER, I am in control of the game.");
-	#else
-		log(Info, "I am the SLAVE, I want to join another game.");
-	#endif // MASTER
-
+#ifdef MASTER
+	log(Info, "I am the MASTER, I am in control of the game.");
+#else
+	log(Info, "I am the SLAVE, I want to join another game.");
+#endif // MASTER
+	
 	log(Info, "I am listening on port %i", port);
 	log(Info, "and want to connect to %s:%i\n", destination, destPort);
 	
