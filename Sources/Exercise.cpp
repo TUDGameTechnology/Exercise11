@@ -4,10 +4,9 @@
 #include <Kore/Math/Core.h>
 #include <Kore/System.h>
 #include <Kore/Input/Keyboard.h>
-#include <Kore/Input/Mouse.h>
-#include <Kore/Audio/Mixer.h>
-#include <Kore/Graphics/Image.h>
-#include <Kore/Graphics/Graphics.h>
+#include <Kore/Audio1/Audio.h>
+#include <Kore/Graphics4/Graphics.h>
+#include <Kore/Graphics4/PipelineState.h>
 #include <Kore/Math/Quaternion.h>
 #include <Kore/Threads/Thread.h>
 #include <Kore/Threads/Mutex.h>
@@ -17,8 +16,10 @@
 
 #include <sstream>
 
+#include "MeshObject.h"
+
 // uncomment to be in control of the game
-//#define MASTER
+#define MASTER
 
 #ifdef MASTER
 	#define SRC_PORT 9898
@@ -37,71 +38,9 @@
 
 using namespace Kore;
 
-class MeshObject {
-public:
-	MeshObject(const char* meshFile, const char* textureFile, const VertexStructure& structure, float scale = 1.0f) {
-		mesh = loadObj(meshFile);
-		image = new Texture(textureFile, true);
-		
-		minx = miny = minz = 9999999;
-		maxx = maxy = maxz = -9999999;
-		
-		vertexBuffer = new VertexBuffer(mesh->numVertices, structure, 0);
-		float* vertices = vertexBuffer->lock();
-		for (int i = 0; i < mesh->numVertices; ++i) {
-			vertices[i * 8 + 0] = mesh->vertices[i * 8 + 0] * scale;
-			minx = min(vertices[i * 8 + 0], minx);
-			maxx = max(vertices[i * 8 + 0], maxx);
-			vertices[i * 8 + 1] = mesh->vertices[i * 8 + 1] * scale;
-			miny = min(vertices[i * 8 + 1], miny);
-			maxy = max(vertices[i * 8 + 1], maxy);
-			vertices[i * 8 + 2] = mesh->vertices[i * 8 + 2] * scale;
-			minz = min(vertices[i * 8 + 2], minz);
-			maxz = max(vertices[i * 8 + 2], maxz);
-			vertices[i * 8 + 3] = mesh->vertices[i * 8 + 3];
-			vertices[i * 8 + 4] = 1.0f - mesh->vertices[i * 8 + 4];
-			vertices[i * 8 + 5] = mesh->vertices[i * 8 + 5];
-			vertices[i * 8 + 6] = mesh->vertices[i * 8 + 6];
-			vertices[i * 8 + 7] = mesh->vertices[i * 8 + 7];
-		}
-
-		vertexBuffer->unlock();
-		
-		indexBuffer = new IndexBuffer(mesh->numFaces * 3);
-		int* indices = indexBuffer->lock();
-		for (int i = 0; i < mesh->numFaces * 3; i++) {
-			indices[i] = mesh->indices[i];
-		}
-		indexBuffer->unlock();
-		
-		M = mat4::Identity();
-	}
-
-	void render(TextureUnit tex) {
-		Graphics::setTexture(tex, image);
-		Graphics::setVertexBuffer(*vertexBuffer);
-		Graphics::setIndexBuffer(*indexBuffer);
-		Graphics::drawIndexedVertices();
-	}
-
-	virtual void update(float tdif) {
-		(void)tdif;	// Do nothing
-	}
-
-	mat4 M;
-protected:
-	float minx, miny, minz;
-	float maxx, maxy, maxz;
-private:
-	VertexBuffer* vertexBuffer;
-	IndexBuffer* indexBuffer;
-	Mesh* mesh;
-	Texture* image;
-};
-
 class Ball : public MeshObject {
 public:
-	Ball(float x, float y, float z, const VertexStructure& structure, float scale = 1.0f) : MeshObject("ball.obj", "unshaded.png", structure, scale), x(x), y(y), z(z), dir(0, 0, 0) {
+	Ball(float x, float y, float z, const Graphics4::VertexStructure& structure, float scale = 1.0f) : MeshObject("ball.obj", "unshaded.png", structure, scale), x(x), y(y), z(z), dir(0, 0, 0) {
 		rotation = Quaternion(vec3(0, 0, 1), 0);
 	}
 
@@ -145,16 +84,22 @@ namespace {
 	const int height = 768;
 
 	double startTime;
-	Shader* vertexShader;
-	Shader* fragmentShader;
-	Program* program;
+	Graphics4::Shader* vertexShader;
+	Graphics4::Shader* fragmentShader;
+	Graphics4::PipelineState* pipeline;
+	
+	// null terminated array of MeshObject pointers
 	MeshObject* objects[] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
 	Ball* balls[] = { nullptr, nullptr, nullptr };
-	TextureUnit tex;
-	ConstantLocation pvLocation;
-	ConstantLocation mLocation;
+	
+	// uniform locations - add more as you see fit
+	Graphics4::TextureUnit tex;
+	Graphics4::ConstantLocation pvLocation;
+	Graphics4::ConstantLocation mLocation;
+	
 	mat4 PV;
-	float lastTime = 0;
+	
+	float lastTime = 0.0;
 
 	Socket socket;
 	vec3 position(0, 2, -3);
@@ -162,7 +107,6 @@ namespace {
 	const int port = SRC_PORT;
 	const int destPort = DEST_PORT;
 	const char* destination = "localhost";
-	
 	
 	// Send a packet to the other client
 	// If you are sending strings, make sure to null-terminate them, e.g. "hello\0"
@@ -225,20 +169,20 @@ namespace {
 		
 		updateBall();
 		
-		Kore::Audio::update();
+		Kore::Audio2::update();
 		
-		Graphics::begin();
-		Graphics::clear(Graphics::ClearColorFlag | Graphics::ClearDepthFlag, 0xff9999FF, 1.0f);
+		Graphics4::begin();
+		Graphics4::clear(Graphics4::ClearColorFlag | Graphics4::ClearDepthFlag, 0xff9999FF, 1.0f);
 		
-		program->set();
+		Graphics4::setPipeline(pipeline);
 		
 		PV = mat4::Perspective(60, (float)width / (float)height, 0.1f, 100) * mat4::lookAt(position, vec3(position.x(), position.y(), position.z() + 10.0f), vec3(0, 1, 0));
-		Graphics::setMatrix(pvLocation, PV);
+		Graphics4::setMatrix(pvLocation, PV);
 		
 		MeshObject** current = &objects[0];
 		while (*current != nullptr) {
 			(*current)->update(tdif);
-			Graphics::setMatrix(mLocation, (*current)->M);
+			Graphics4::setMatrix(mLocation, (*current)->M);
 			(*current)->render(tex);
 			++current;
 		}
@@ -263,8 +207,8 @@ namespace {
 			sendPacket(floatData, sizeof(float));
 		#endif
 		
-		Graphics::end();
-		Graphics::swapBuffers();
+		Graphics4::end();
+		Graphics4::swapBuffers();
 	}
 
 	void updateBall() {
@@ -319,31 +263,31 @@ namespace {
 	/* Practical Task: Send packets with information about the input controls
 	/* of the local player - keyDown
 	/************************************************************************/
-	void keyDown(KeyCode code, wchar_t character) {
+	void keyDown(KeyCode code) {
 		#ifdef MASTER
-		if (code == Key_Left) {
+		if (code == KeyLeft) {
 			left = true;
 		}
-		else if (code == Key_Right) {
+		else if (code == KeyRight) {
 			right = true;
 		}
-		else if (code == Key_Up) {
+		else if (code == KeyUp) {
 			up = true;
 		}
-		else if (code == Key_Down) {
+		else if (code == KeyDown) {
 			down = true;
 		}
 		#else
-		if (code == Key_A) {
+		if (code == KeyA) {
 			left2 = true;
 		}
-		else if (code == Key_D) {
+		else if (code == KeyD) {
 			right2 = true;
 		}
-		if (code == Key_W) {
+		if (code == KeyW) {
 			up2 = true;
 		}
-		else if (code == Key_S) {
+		else if (code == KeyS) {
 			down2 = true;
 		}
 		#endif // MASTER
@@ -353,31 +297,31 @@ namespace {
 	/* Practical Task: Send packets with information about the input controls
 	/* of the local player - keyUp
 	/************************************************************************/
-	void keyUp(KeyCode code, wchar_t character) {
+	void keyUp(KeyCode code) {
 		#ifdef MASTER
-		if (code == Key_Left) {
+		if (code == KeyLeft) {
 			left = false;
 		}
-		else if (code == Key_Right) {
+		else if (code == KeyRight) {
 			right = false;
 		}
-		else if (code == Key_Up) {
+		else if (code == KeyUp) {
 			up = false;
 		}
-		else if (code == Key_Down) {
+		else if (code == KeyDown) {
 			down = false;
 		}
 		#else
-		if (code == Key_A) {
+		if (code == KeyA) {
 			left2 = false;
 		}
-		else if (code == Key_D) {
+		else if (code == KeyD) {
 			right2 = false;
 		}
-		else if (code == Key_W) {
+		else if (code == KeyW) {
 			up2 = false;
 		}
-		else if (code == Key_S) {
+		else if (code == KeyS) {
 			down2 = false;
 		}
 		#endif // MASTER
@@ -424,23 +368,27 @@ namespace {
 		
 		FileReader vs("shader.vert");
 		FileReader fs("shader.frag");
-		vertexShader = new Shader(vs.readAll(), vs.size(), VertexShader);
-		fragmentShader = new Shader(fs.readAll(), fs.size(), FragmentShader);
+		vertexShader = new Graphics4::Shader(vs.readAll(), vs.size(), Graphics4::VertexShader);
+		fragmentShader = new Graphics4::Shader(fs.readAll(), fs.size(), Graphics4::FragmentShader);
 		
 		// This defines the structure of your Vertex Buffer
-		VertexStructure structure;
-		structure.add("pos", Float3VertexData);
-		structure.add("tex", Float2VertexData);
-		structure.add("nor", Float3VertexData);
+		Graphics4::VertexStructure structure;
+		structure.add("pos", Graphics4::Float3VertexData);
+		structure.add("tex", Graphics4::Float2VertexData);
+		structure.add("nor", Graphics4::Float3VertexData);
 		
-		program = new Program;
-		program->setVertexShader(vertexShader);
-		program->setFragmentShader(fragmentShader);
-		program->link(structure);
+		pipeline = new Graphics4::PipelineState;
+		pipeline->inputLayout[0] = &structure;
+		pipeline->inputLayout[1] = nullptr;
+		pipeline->vertexShader = vertexShader;
+		pipeline->fragmentShader = fragmentShader;
+		pipeline->depthMode = Graphics4::ZCompareLess;
+		pipeline->depthWrite = true;
+		pipeline->compile();
 		
-		tex = program->getTextureUnit("tex");
-		pvLocation = program->getConstantLocation("PV");
-		mLocation = program->getConstantLocation("M");
+		tex = pipeline->getTextureUnit("tex");
+		pvLocation = pipeline->getConstantLocation("PV");
+		mLocation = pipeline->getConstantLocation("M");
 		
 		objects[0] = balls[0] = new Ball(0.5f, 1.0f, 0.0f, structure, 3.0f);
 		objects[1] = balls[1] = new Ball(-0.5f, 1.0f, 0.0f, structure, 3.0f);
@@ -451,12 +399,8 @@ namespace {
 		objects[4] = new MeshObject("base.obj", "StarMap.png", structure);
 		objects[4]->M = mat4::RotationX(3.1415f / 2.0f)*mat4::Scale(1, 1, 1)*mat4::Translation(0, 0, 0.5f);
 		
-		Graphics::setRenderState(DepthTest, true);
-		Graphics::setRenderState(DepthTestCompare, ZCompareLess);
-		Graphics::setRenderState(DepthWrite, true);
-		
-		Graphics::setTextureAddressing(tex, U, Repeat);
-		Graphics::setTextureAddressing(tex, V, Repeat);
+		Graphics4::setTextureAddressing(tex, Graphics4::U, Graphics4::Repeat);
+		Graphics4::setTextureAddressing(tex, Graphics4::V, Graphics4::Repeat);
 	}
 }
 
@@ -470,15 +414,16 @@ int kore(int argc, char** argv) {
 	log(Info, "I am listening on port %i", port);
 	log(Info, "and want to connect to %s:%i\n", destination, destPort);
 	
-	Kore::System::init("Exercise 12 - "  CLIENT_NAME, width, height);
+	Kore::System::init("Exercise 11 - "  CLIENT_NAME, width, height);
 
+	Kore::Audio1::init();
+	Kore::Audio2::init();
+	
 	init();
 	
 	Kore::System::setCallback(update);
 	
 	startTime = System::time();
-	Kore::Mixer::init();
-	Kore::Audio::init();
 	
 	Keyboard::the()->KeyDown = keyDown;
 	Keyboard::the()->KeyUp = keyUp;
