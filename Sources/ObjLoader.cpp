@@ -1,38 +1,43 @@
 #include "pch.h"
 #include "ObjLoader.h"
+#include "Memory.h"
 #include <Kore/IO/FileReader.h>
 #include <cstring>
 #include <cstdlib>
+#include <assert.h>
 
 using namespace Kore;
 
 namespace {
-	char* tokenize(char* s, char delimiter, int& i) {
+	const int maxTokenLength = 256;
+	
+	void tokenize(char* s, char delimiter, int& i, char* token) {
 		int lastIndex = i;
 		char* index = strchr(s + lastIndex + 1, delimiter);
 		if (index == nullptr) {
-			return nullptr;
+			token[0] = 0;
+			return;
 		}
 		int newIndex = (int)(index - s);
 		i = newIndex;
 		int length = newIndex - lastIndex;
-		char* token = new char[length + 1];
+		assert(length < maxTokenLength);
 		strncpy(token, s + lastIndex + 1, length);
 		token[length] = 0;
-		return token;
 	}
 	
 	int countFirstCharLines(char* source, const char* start) {
 		int count = 0;
 		
 		int index = 0;
-		char* line = tokenize(source, '\n', index);
+		char line[maxTokenLength];
+		tokenize(source, '\n', index, line);
 		
-		while (line != nullptr) {
+		while (line[0] != 0) {
 			char *pch = strstr(line, start);
 			if (pch == line)
 				count++;
-			line = tokenize(source, '\n', index);
+			tokenize(source, '\n', index, line);
 		}
 		return count;
 	}
@@ -59,13 +64,14 @@ namespace {
 		int count = 0;
 		
 		int index = 0;
-		char* line = tokenize(source, '\n', index);
+		char line[maxTokenLength];
+		tokenize(source, '\n', index, line);
 		
-		while (line != nullptr) {
+		while (line[0] != 0) {
 			if (line[0] == 'f') {
 				count += countFacesInLine(line);
 			}
-			line = tokenize(source, '\n', index);
+			tokenize(source, '\n', index, line);
 		}
 		return count;
 	}
@@ -147,6 +153,7 @@ namespace {
 			mesh->curIndex[2] = verts[0];
 			mesh->curIndex += 3;
 			mesh->numFaces += 2;
+			mesh->numIndices += 6;
 		}
 		else {
 			// We have a triangle
@@ -165,6 +172,7 @@ namespace {
 			}
 			mesh->curIndex += 3;
 			mesh->numFaces += 1;
+			mesh->numIndices += 3;
 		}
 	}
 	
@@ -210,37 +218,36 @@ Mesh* loadObj(const char* filename) {
 	FileReader fileReader(filename, FileReader::Asset);
 	void* data = fileReader.readAll();
 	int length = fileReader.size() + 1;
-	char* source = new char[length];
-	for (int i = 0; i < length; ++i) source[i] = reinterpret_cast<char*>(data)[i];
+	char* source = Memory::scratchPad<char>(length);
+	memcpy(source, data, length);
 	source[length] = 0;
 	
-	Mesh* mesh = new Mesh;
-	
+	Mesh* mesh = Memory::allocate<Mesh>();
+	mesh->numIndices = 0;
 	int vertices = countVertices(source);
-	mesh->vertices = new float[vertices * 8];
+	mesh->vertices = Memory::allocate<float>(vertices * 8);
 	mesh->curVertex = mesh->vertices;
 	int faces = countFaces(source);
-	mesh->indices = new int[faces * 3];
+	mesh->indices = Memory::allocate<int>(faces * 3);
 	mesh->curIndex = mesh->indices;
 	mesh->numUVs = countUVs(source);
-	mesh->uvs = new float[mesh->numUVs * 2];
+	mesh->uvs = Memory::allocate<float>(mesh->numUVs * 2);
 	mesh->curUV = mesh->uvs;
 	int normals = countNormals(source);
 	mesh->numNormals = normals;
-	mesh->normals = new float[normals * 3];
+	mesh->normals = Memory::allocate<float>(normals * 3);
 	mesh->curNormal = mesh->normals;
+	
 	mesh->numVertices = 0;
 	mesh->numFaces = 0;
 	
 	int index = 0;
-	char* line = tokenize(source, '\n', index);
+	char line[maxTokenLength];
+	tokenize(source, '\n', index, line);
 	
-	int lineNumber = 0;
-	while (line != nullptr) {
+	while (line[0] != 0) {
 		parseLine(mesh, line);
-		lineNumber++;
-		delete[] line;
-		line = tokenize(source, '\n', index);
+		tokenize(source, '\n', index, line);
 	}
 	
 	return mesh;

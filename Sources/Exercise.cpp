@@ -12,6 +12,7 @@
 #include <Kore/Network/Socket.h>
 #include <Kore/Log.h>
 #include "ObjLoader.h"
+#include "Memory.h"
 
 #include <sstream>
 
@@ -413,6 +414,7 @@ int kore(int argc, char** argv) {
 	
 	Kore::System::init("Exercise 11 - "  CLIENT_NAME, width, height);
 	
+	Memory::init();
 	init();
 	
 	Kore::System::setCallback(update);

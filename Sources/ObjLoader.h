@@ -5,6 +5,7 @@ struct Mesh {
 	int numVertices;
 	int numUVs;
 	int numNormals;
+	int numIndices;
 	
 	float* vertices;
 	int* indices;
