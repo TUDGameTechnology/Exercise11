@@ -14,12 +14,7 @@
 #include "ObjLoader.h"
 #include "Memory.h"
 
-#include <sstream>
-
 #include "MeshObject.h"
-
-// uncomment to be in control of the game
-//#define MASTER
 
 #ifdef MASTER
 #define SRC_PORT 9898
@@ -38,6 +33,11 @@
 
 using namespace Kore;
 
+enum MessageType {
+	Hello,
+	NpcPos
+};
+
 class Ball : public MeshObject {
 public:
 	Ball(float x, float y, float z, const Graphics4::VertexStructure& structure, float scale = 1.0f) : MeshObject("ball.obj", "unshaded.png", structure, scale), x(x), y(y), z(z), dir(0, 0, 0) {
@@ -47,10 +47,10 @@ public:
 	void update(float tdif) override {
 		vec3 dir = this->dir;
 		if (dir.getLength() != 0) dir.setLength(dir.getLength() * tdif * 60.0f);
-			x += dir.x();
-			if (x > 1) {
-				x = 1;
-			}
+		x += dir.x();
+		if (x > 1) {
+			x = 1;
+		}
 		if (x < -1) {
 			x = -1;
 		}
@@ -109,7 +109,6 @@ namespace {
 	const char* destination = "localhost";
 	
 	// Send a packet to the other client
-	// If you are sending strings, make sure to null-terminate them, e.g. "hello\0"
 	// length is the length of the packet in bytes
 	void sendPacket(const unsigned char data[], int length) {
 		socket.send(destination, destPort, data, length);
@@ -123,13 +122,10 @@ namespace {
 		// receive packets
 		while (true) {
 			// Read buffer
-			unsigned char buffer[256];
-			float *floatBuffer = (float*) buffer;
+			u8 buffer[256];
 			unsigned fromAddress;
 			unsigned fromPort;
 			int read = socket.receive(buffer, sizeof(buffer), fromAddress, fromPort);
-			std::ostringstream ss;
-			ss << buffer;
 			
 			// break if there was no new packet
 			if (read <= 0) {
@@ -146,17 +142,12 @@ namespace {
 			// Set the values for left, right, up, down here
 			
 			// receive position updates of the npc ball
-			if ((ss.str() == "x")) {
-				read = socket.receive(buffer, sizeof(buffer), fromAddress, fromPort);
-				balls[2]->x = floatBuffer[0];
-			}
-			if ((ss.str() == "y")) {
-				read = socket.receive(buffer, sizeof(buffer), fromAddress, fromPort);
-				balls[2]->y = floatBuffer[0];
-			}
-			if ((ss.str() == "z")) {
-				read = socket.receive(buffer, sizeof(buffer), fromAddress, fromPort);
-				balls[2]->z = floatBuffer[0];
+
+			if (buffer[0] == NpcPos) {
+				float* floats = (float*)&buffer[1];
+				balls[2]->x = floats[0];
+				balls[2]->y = floats[1];
+				balls[2]->z = floats[2];
 			}
 #endif // MASTER
 			
@@ -187,22 +178,14 @@ namespace {
 		
 #ifdef MASTER
 		// send position of the npc ball
-		unsigned char floatData[255];
-		float *f_buf = (float*)floatData;
+		u8 data[1 + sizeof(float) * 3];
+		float* fdata = (float*)&data[1];
 		
-		const unsigned char data1[] = "x\0";
-		const unsigned char data2[] = "y\0";
-		const unsigned char data3[] = "z\0";
-		
-		sendPacket(data1, sizeof(unsigned char) * 2);
-		f_buf[0] = balls[2]->x;
-		sendPacket(floatData, sizeof(float));
-		sendPacket(data2, sizeof(unsigned char)* 2);
-		f_buf[0] = balls[2]->y;
-		sendPacket(floatData, sizeof(float));
-		sendPacket(data3, sizeof(unsigned char)* 2);
-		f_buf[0] = balls[2]->z;
-		sendPacket(floatData, sizeof(float));
+		data[0] = (u8)NpcPos;
+		fdata[0] = balls[2]->x;
+		fdata[1] = balls[2]->y;
+		fdata[2] = balls[2]->z;
+		sendPacket(data, sizeof(data));
 #endif
 		
 		Graphics4::end();
@@ -331,8 +314,8 @@ namespace {
 		socket.open(port);
 		
 		// send "hello" when joining to tell other player you are there
-		const unsigned char data[] = "hello\0";
-		sendPacket(data, sizeof(unsigned char)* 6);
+		u8 hello = Hello;
+		sendPacket(&hello, 1);
 		
 #ifdef MASTER
 		log(Info, "Waiting for another player (the SLAVE) to join my game...");
@@ -347,10 +330,8 @@ namespace {
 			unsigned fromAddress;
 			unsigned fromPort;
 			int read = socket.receive(buffer, sizeof(buffer), fromAddress, fromPort);
-			std::ostringstream ss;
-			ss << buffer;
 			// break if player is there
-			if (ss.str() == "hello\0") {
+			if (buffer[0] == Hello) {
 				break;
 			}
 		}
@@ -362,7 +343,7 @@ namespace {
 #endif // MASTER
 		
 		// resend hello for newly connected player
-		sendPacket(data, sizeof(unsigned char)* 6);
+		sendPacket(&hello, 1);
 		
 		FileReader vs("shader.vert");
 		FileReader fs("shader.frag");
