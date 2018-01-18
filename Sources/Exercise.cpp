@@ -330,6 +330,9 @@ namespace {
 			unsigned fromAddress;
 			unsigned fromPort;
 			int read = socket.receive(buffer, sizeof(buffer), fromAddress, fromPort);
+			if (read <= 0) {
+				continue;
+			}
 			// break if player is there
 			if (buffer[0] == Hello) {
 				break;
